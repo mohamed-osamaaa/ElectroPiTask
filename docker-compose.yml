@@ -44,12 +44,13 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* vars are baked in at BUILD time by Next.js
+        - NEXT_PUBLIC_API_URL=http://localhost:3000/api
     container_name: task_manager_client
     restart: always
     ports:
       - '3001:3000'
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3000/api
     depends_on:
       - server
     networks:

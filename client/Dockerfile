@@ -7,6 +7,10 @@ RUN npm install
 
 COPY . .
 
+# NEXT_PUBLIC_* vars must be available at BUILD TIME (baked into the JS bundle)
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN npm run build
 
 EXPOSE 3000
