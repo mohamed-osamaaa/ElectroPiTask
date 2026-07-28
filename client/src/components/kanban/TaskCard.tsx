@@ -20,15 +20,25 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/lib/api/tasks";
 import { usersApi } from "@/lib/api/users";
+import { useAuthStore } from "@/store/auth.store";
 import { toast } from "sonner";
 
 interface TaskCardProps {
   task: Task;
+  isProjectOwner: boolean;
 }
 
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({ task, isProjectOwner }: TaskCardProps) {
   const [editOpen, setEditOpen] = useState(false);
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
+
+  // Match backend logic: Admin, Project Owner, Task Creator, or Task Assignee can edit
+  const canEdit =
+    currentUser?.role === "admin" ||
+    isProjectOwner ||
+    task.creatorId === currentUser?.id ||
+    task.assigneeId === currentUser?.id;
 
   // Fetch users to resolve assignee name
   const { data: users = [] } = useQuery({
@@ -109,21 +119,23 @@ export function TaskCard({ task }: TaskCardProps) {
           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${priorityColors[task.priority]}`}>
             {task.priority}
           </Badge>
-          <DropdownMenu>
-            <DropdownMenuTrigger render={
-              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreVertical className="h-3.5 w-3.5" />
-              </Button>
-            } />
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
-                <Edit2 className="h-4 w-4 mr-2" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4 mr-2" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              } />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
+                  <Edit2 className="h-4 w-4 mr-2" /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardHeader>
 

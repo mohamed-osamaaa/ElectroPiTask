@@ -19,8 +19,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 interface ManageMembersDialogProps {
-  projectId: number;
-  ownerId: number;
+  projectId: string;
+  ownerId: string;
 }
 
 export function ManageMembersDialog({ projectId, ownerId }: ManageMembersDialogProps) {
@@ -47,7 +47,7 @@ export function ManageMembersDialog({ projectId, ownerId }: ManageMembersDialogP
   });
 
   const removeMutation = useMutation({
-    mutationFn: (userId: number) => projectsApi.removeMember(projectId, userId),
+    mutationFn: (userId: string) => projectsApi.removeMember(projectId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projectMembers", projectId] });
       toast.success("Member removed");

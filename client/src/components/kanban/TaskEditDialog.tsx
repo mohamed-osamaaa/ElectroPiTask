@@ -167,7 +167,7 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
                   </div>
                   <div className="grid gap-2">
                     <Label>Assignee</Label>
-                    <Select value={assigneeId} onValueChange={setAssigneeId}>
+                    <Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || "none")}>
                       <SelectTrigger>
                         <SelectValue placeholder="Assign to..." />
                       </SelectTrigger>

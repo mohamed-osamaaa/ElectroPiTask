@@ -9,9 +9,10 @@ interface KanbanColumnProps {
   id: TaskStatus;
   title: string;
   tasks: Task[];
+  isProjectOwner: boolean;
 }
 
-export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, tasks, isProjectOwner }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({
     id,
     data: {
@@ -38,7 +39,7 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
             </div>
           ) : (
             tasks.map((task) => (
-              <TaskCard key={task.id} task={task} />
+              <TaskCard key={task.id} task={task} isProjectOwner={isProjectOwner} />
             ))
           )}
         </SortableContext>

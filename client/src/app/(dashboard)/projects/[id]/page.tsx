@@ -20,6 +20,8 @@ export default function ProjectKanbanPage() {
   const projectId = params.id as string;
   const user = useAuthStore((state) => state.user);
 
+  // All project members see all tasks by default (per requirements).
+  // The assignee filter is optional — users can filter by any member including themselves.
   const [filters, setFilters] = useState<{ status?: string; priority?: string; assigneeId?: string }>({});
 
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery({
@@ -84,9 +86,13 @@ export default function ProjectKanbanPage() {
         </div>
       </div>
 
-      <TaskFilters filters={filters} onFilterChange={setFilters} />
+      <TaskFilters
+        projectId={projectId}
+        filters={filters}
+        onFilterChange={setFilters}
+      />
 
-      <KanbanBoard initialTasks={tasksData?.data || []} projectId={projectId} />
+      <KanbanBoard initialTasks={tasksData?.data || []} projectId={projectId} isProjectOwner={canManageMembers} />
     </div>
   );
 }

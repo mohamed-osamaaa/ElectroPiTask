@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Task, TaskStatus } from "@/types";
 import { KanbanColumn } from "./KanbanColumn";
 import { io, Socket } from "socket.io-client";
@@ -20,16 +20,22 @@ import { sortableKeyboardCoordinates, arrayMove } from "@dnd-kit/sortable";
 import { TaskCard } from "./TaskCard";
 import { tasksApi } from "@/lib/api/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/auth.store";
+import { toast } from "sonner";
 
 interface KanbanBoardProps {
   initialTasks: Task[];
-  projectId: number;
+  projectId: string;
+  isProjectOwner: boolean;
 }
 
-export function KanbanBoard({ initialTasks, projectId }: KanbanBoardProps) {
+export function KanbanBoard({ initialTasks, projectId, isProjectOwner }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  // Store the original status before drag starts so we can revert if needed
+  const [dragOriginStatus, setDragOriginStatus] = useState<TaskStatus | null>(null);
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
 
   // Sync tasks when initialTasks prop changes
   useEffect(() => {
@@ -38,7 +44,7 @@ export function KanbanBoard({ initialTasks, projectId }: KanbanBoardProps) {
 
   // Optimistic update mutation
   const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: number; data: Partial<Task> }) =>
+    mutationFn: ({ taskId, data }: { taskId: string; data: Partial<Task> }) =>
       tasksApi.update(projectId, taskId, data),
     onSuccess: () => {
       // Invalidate to ensure consistency, but optimistic update is already applied
@@ -87,7 +93,7 @@ export function KanbanBoard({ initialTasks, projectId }: KanbanBoardProps) {
       });
     });
 
-    socket.on("task:deleted", ({ id }: { id: number }) => {
+    socket.on("task:deleted", ({ id }: { id: string }) => {
       setTasks((prevTasks) => prevTasks.filter((t) => t.id !== id));
       queryClient.setQueryData(["tasks", projectId], (oldData: any) => {
         if (!oldData?.data) return oldData;
@@ -122,7 +128,10 @@ export function KanbanBoard({ initialTasks, projectId }: KanbanBoardProps) {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     if (active.data.current?.type === "Task") {
-      setActiveTask(active.data.current.task);
+      const draggedTask: Task = active.data.current.task;
+      setActiveTask(draggedTask);
+      // Save original status so we can revert optimistic UI if needed
+      setDragOriginStatus(draggedTask.status);
     }
   };
 
@@ -171,15 +180,53 @@ export function KanbanBoard({ initialTasks, projectId }: KanbanBoardProps) {
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null);
     const { active, over } = event;
-    if (!over) return;
 
-    const activeId = active.id as number;
-    const task = tasks.find((t) => t.id === activeId);
-    
-    if (task) {
-      // Fire mutation to update the backend
-      updateTaskMutation.mutate({ taskId: activeId, data: { status: task.status } });
+    if (!over) {
+      // Dropped outside — revert to original status
+      if (dragOriginStatus) {
+        const activeId = active.id as string;
+        setTasks((prev) =>
+          prev.map((t) => (t.id === activeId ? { ...t, status: dragOriginStatus } : t))
+        );
+      }
+      setDragOriginStatus(null);
+      return;
     }
+
+    const activeId = active.id as string;
+    const task = tasks.find((t) => t.id === activeId);
+
+    if (!task) {
+      setDragOriginStatus(null);
+      return;
+    }
+
+    // Permission check matching backend: Admin, Project Owner, Task Creator, or Task Assignee
+    const isAdmin = currentUser?.role === "admin";
+    const isAssigned = task.assigneeId === currentUser?.id;
+    const isCreator = task.creatorId === currentUser?.id;
+
+    if (!isAdmin && !isAssigned && !isCreator && !isProjectOwner) {
+      // Revert optimistic UI update back to origin status
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === activeId ? { ...t, status: dragOriginStatus ?? t.status } : t
+        )
+      );
+      toast.error("You do not have permission to move this task");
+      setDragOriginStatus(null);
+      return;
+    }
+
+    // Status didn't actually change — nothing to do
+    if (task.status === dragOriginStatus) {
+      setDragOriginStatus(null);
+      return;
+    }
+
+    // Fire mutation to update the backend
+    updateTaskMutation.mutate({ taskId: activeId, data: { status: task.status } });
+    setDragOriginStatus(null);
   };
 
   return (
@@ -197,11 +244,12 @@ export function KanbanBoard({ initialTasks, projectId }: KanbanBoardProps) {
             id={col.id}
             title={col.title}
             tasks={getTasksByStatus(col.id)}
+            isProjectOwner={isProjectOwner}
           />
         ))}
       </div>
       <DragOverlay>
-        {activeTask ? <TaskCard task={activeTask} /> : null}
+        {activeTask ? <TaskCard task={activeTask} isProjectOwner={isProjectOwner} /> : null}
       </DragOverlay>
     </DndContext>
   );

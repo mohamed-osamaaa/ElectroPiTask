@@ -4,19 +4,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { FilterX } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { usersApi } from "@/lib/api/users";
+import { projectsApi } from "@/lib/api/projects";
 
 interface TaskFiltersProps {
+  projectId: string;
   filters: { status?: string; priority?: string; assigneeId?: string };
   onFilterChange: (filters: any) => void;
 }
 
-export function TaskFilters({ filters, onFilterChange }: TaskFiltersProps) {
+export function TaskFilters({ projectId, filters, onFilterChange }: TaskFiltersProps) {
   const hasFilters = filters.status || filters.priority || filters.assigneeId;
 
-  const { data: users = [] } = useQuery({
-    queryKey: ["users"],
-    queryFn: usersApi.getAll,
+  const { data: members = [] } = useQuery({
+    queryKey: ["project-members", projectId],
+    queryFn: () => projectsApi.getMembers(projectId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -62,23 +63,27 @@ export function TaskFilters({ filters, onFilterChange }: TaskFiltersProps) {
         </Select>
       </div>
 
-      {/* Assignee Filter */}
+      {/* Assignee Filter — only project members */}
       <div className="flex items-center gap-1.5">
         <span className="text-xs text-muted-foreground font-medium">Assignee:</span>
         <Select
           value={filters.assigneeId ? String(filters.assigneeId) : "all"}
           onValueChange={(val) =>
-          onFilterChange({ ...filters, assigneeId: val === "all" ? undefined : val })
+            onFilterChange({ ...filters, assigneeId: val === "all" ? undefined : val })
           }
         >
           <SelectTrigger className="w-[140px] h-8 text-xs">
-            <SelectValue placeholder="Assignee" />
+            <span className="truncate">
+              {!filters.assigneeId
+                ? "All Assignees"
+                : (members as any[]).find((m) => String(m.id) === String(filters.assigneeId))?.name ?? "All Assignees"}
+            </span>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Assignees</SelectItem>
-            {(users as any[]).map((u) => (
-              <SelectItem key={u.id} value={String(u.id)}>
-                {u.name}
+            {(members as any[]).map((m) => (
+              <SelectItem key={m.id} value={String(m.id)}>
+                {m.name}
               </SelectItem>
             ))}
           </SelectContent>

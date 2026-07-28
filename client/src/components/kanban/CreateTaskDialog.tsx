@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/lib/api/tasks";
-import { usersApi } from "@/lib/api/users";
+import { projectsApi } from "@/lib/api/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,21 +21,22 @@ import { Plus } from "lucide-react";
 import { TaskStatus, TaskPriority } from "@/types";
 import { toast } from "sonner";
 
-export function CreateTaskDialog({ projectId }: { projectId: number }) {
+export function CreateTaskDialog({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<TaskStatus>("todo");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState<string>("");
-  const [assigneeId, setAssigneeId] = useState<string>("");
+  const [assigneeId, setAssigneeId] = useState<string>("none");
   const queryClient = useQueryClient();
 
-  const { data: users = [] } = useQuery({
-    queryKey: ["users"],
-    queryFn: usersApi.getAll,
+  const { data: members = [] } = useQuery({
+    queryKey: ["project-members", projectId],
+    queryFn: () => projectsApi.getMembers(projectId),
     enabled: open,
   });
+
 
   const mutation = useMutation({
     mutationFn: (data: any) => tasksApi.create(projectId, data),
@@ -56,7 +57,7 @@ export function CreateTaskDialog({ projectId }: { projectId: number }) {
     setStatus("todo");
     setPriority("medium");
     setDueDate("");
-    setAssigneeId("");
+    setAssigneeId("none");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -74,12 +75,10 @@ export function CreateTaskDialog({ projectId }: { projectId: number }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Task
-        </Button>
-      } />
+      <DialogTrigger render={<Button size="sm" />}>
+        <Plus className="h-4 w-4 mr-2" />
+        Add Task
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -143,15 +142,22 @@ export function CreateTaskDialog({ projectId }: { projectId: number }) {
               </div>
               <div className="grid gap-2">
                 <Label>Assignee</Label>
-                <Select value={assigneeId} onValueChange={setAssigneeId}>
+                <Select
+                  value={assigneeId}
+                  onValueChange={(val) => setAssigneeId(val || "none")}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Assign to..." />
+                    <span className="truncate">
+                      {assigneeId === "none" || !assigneeId
+                        ? <span className="text-muted-foreground">Assign to...</span>
+                        : (members.find((m: any) => String(m.id) === assigneeId) as any)?.name ?? assigneeId}
+                    </span>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Unassigned</SelectItem>
-                    {users.map((u: any) => (
-                      <SelectItem key={u.id} value={String(u.id)}>
-                        {u.name}
+                    {members.map((m: any) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
