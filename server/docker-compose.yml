@@ -1,11 +1,16 @@
 version: '3.8'
 
+# Backend-only Docker Compose — for Backend development without needing the Frontend.
+# Usage: docker-compose up  (from inside the /server directory)
+# The NestJS app and MySQL DB will start. Test with: http://localhost:3000/api
+
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: electopi_app
+    restart: unless-stopped
     ports:
       - '3000:3000'
     environment:
@@ -23,10 +28,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - backend-network
 
   db:
     image: mysql:8.0
     container_name: electopi_db
+    restart: unless-stopped
     ports:
       - '3306:3306'
     environment:
@@ -35,9 +43,17 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      timeout: 20s
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-proot_password']
+      interval: 10s
+      timeout: 5s
       retries: 10
+      start_period: 30s
+    networks:
+      - backend-network
 
 volumes:
   db_data:
+
+networks:
+  backend-network:
+    driver: bridge

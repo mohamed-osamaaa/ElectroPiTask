@@ -7,7 +7,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: task_manager
+      MYSQL_DATABASE: ElectroPiTask
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:
@@ -16,6 +16,14 @@ services:
       - db_data:/var/lib/mysql
     networks:
       - task-network
+    # Best Practice: healthcheck ensures dependents wait until MySQL is truly ready
+    # (not just when the container starts, but when it can accept connections)
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-proot']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   server:
     build:
@@ -31,12 +39,16 @@ services:
       - DB_PORT=3306
       - DB_USERNAME=user
       - DB_PASSWORD=password
-      - DB_NAME=task_manager
+      - DB_NAME=ElectroPiTask
       - DB_SYNC=true
       - JWT_SECRET=super_secret_jwt_key_for_demo
+      - JWT_EXPIRES_IN=7d
       - NODE_ENV=production
+    # Best Practice: condition: service_healthy waits for the DB healthcheck to pass
+    # before starting the server, preventing connection-refused errors on boot
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - task-network
 
@@ -51,6 +63,7 @@ services:
     restart: always
     ports:
       - '3001:3000'
+    # Best Practice: wait for server container to start before the client
     depends_on:
       - server
     networks:
