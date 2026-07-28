@@ -17,6 +17,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Plus } from "lucide-react";
 import { TaskStatus, TaskPriority } from "@/types";
 import { toast } from "sonner";
@@ -142,26 +143,20 @@ export function CreateTaskDialog({ projectId }: { projectId: string }) {
               </div>
               <div className="grid gap-2">
                 <Label>Assignee</Label>
-                <Select
+                <SearchableSelect
                   value={assigneeId}
                   onValueChange={(val) => setAssigneeId(val || "none")}
-                >
-                  <SelectTrigger>
-                    <span className="truncate">
-                      {assigneeId === "none" || !assigneeId
-                        ? <span className="text-muted-foreground">Assign to...</span>
-                        : (members.find((m: any) => String(m.id) === assigneeId) as any)?.name ?? assigneeId}
-                    </span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Unassigned</SelectItem>
-                    {members.map((m: any) => (
-                      <SelectItem key={m.id} value={String(m.id)}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Assign to..."
+                  searchPlaceholder="Search members..."
+                  options={[
+                    { value: "none", label: "Unassigned" },
+                    ...members.map((m: any) => ({
+                      value: String(m.id),
+                      label: m.name,
+                      sublabel: m.email,
+                    }))
+                  ]}
+                />
               </div>
             </div>
           </div>

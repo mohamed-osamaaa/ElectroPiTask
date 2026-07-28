@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Task, TaskStatus, TaskPriority } from "@/types";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -167,19 +168,20 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
                   </div>
                   <div className="grid gap-2">
                     <Label>Assignee</Label>
-                    <Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || "none")}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Assign to..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Unassigned</SelectItem>
-                        {members.map((member: any) => (
-                          <SelectItem key={member.id} value={String(member.id)}>
-                            {member.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={assigneeId}
+                      onValueChange={(val) => setAssigneeId(val || "none")}
+                      placeholder="Assign to..."
+                      searchPlaceholder="Search members..."
+                      options={[
+                        { value: "none", label: "Unassigned" },
+                        ...members.map((member: any) => ({
+                          value: String(member.id),
+                          label: member.name,
+                          sublabel: member.email,
+                        }))
+                      ]}
+                    />
                   </div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterX, Search } from "lucide-react";
@@ -92,28 +93,23 @@ export function TaskFilters({ projectId, filters, onFilterChange }: TaskFiltersP
       {/* Assignee Filter — only project members */}
       <div className="flex items-center gap-1.5">
         <span className="text-xs text-muted-foreground font-medium">Assignee:</span>
-        <Select
+        <SearchableSelect
           value={filters.assigneeId ? String(filters.assigneeId) : "all"}
           onValueChange={(val) =>
             onFilterChange({ ...filters, assigneeId: val === "all" ? undefined : val })
           }
-        >
-          <SelectTrigger className="w-[140px] h-8 text-xs">
-            <span className="truncate">
-              {!filters.assigneeId
-                ? "All Assignees"
-                : (members as any[]).find((m) => String(m.id) === String(filters.assigneeId))?.name ?? "All Assignees"}
-            </span>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Assignees</SelectItem>
-            {(members as any[]).map((m) => (
-              <SelectItem key={m.id} value={String(m.id)}>
-                {m.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="All Assignees"
+          searchPlaceholder="Search members..."
+          className="w-[160px]"
+          options={[
+            { value: "all", label: "All Assignees" },
+            ...(members as any[]).map((m) => ({
+              value: String(m.id),
+              label: m.name,
+              sublabel: m.email,
+            }))
+          ]}
+        />
       </div>
 
       <div className="flex items-center gap-1.5">
