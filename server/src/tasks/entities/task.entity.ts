@@ -24,8 +24,8 @@ export enum TaskPriority {
 
 @Entity('tasks')
 export class Task {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ length: 200 })
   title: string;
@@ -50,22 +50,22 @@ export class Task {
   @Column({ type: 'date', name: 'due_date', nullable: true })
   dueDate: Date;
 
-  @Column({ name: 'project_id' })
-  projectId: number;
+  @Column({ name: 'project_id', type: 'varchar', length: 36 })
+  projectId: string;
 
   @ManyToOne(() => Project, (project) => project.tasks, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })
   project: Project;
 
-  @Column({ name: 'creator_id' })
-  creatorId: number;
+  @Column({ name: 'creator_id', type: 'varchar', length: 36 })
+  creatorId: string;
 
-  @ManyToOne(() => User, (user) => user.createdTasks, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'creator_id' })
   creator: User;
 
-  @Column({ name: 'assignee_id', nullable: true })
-  assigneeId: number;
+  @Column({ name: 'assignee_id', type: 'varchar', length: 36, nullable: true })
+  assigneeId: string;
 
   @ManyToOne(() => User, (user) => user.assignedTasks, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'assignee_id' })

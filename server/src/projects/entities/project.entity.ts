@@ -14,8 +14,8 @@ import { Task } from '../../tasks/entities/task.entity';
 
 @Entity('projects')
 export class Project {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ length: 150 })
   name: string;
@@ -23,8 +23,8 @@ export class Project {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ name: 'owner_id' })
-  ownerId: number;
+  @Column({ name: 'owner_id', type: 'varchar', length: 36 })
+  ownerId: string;
 
   @ManyToOne(() => User, (user) => user.ownedProjects, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'owner_id' })

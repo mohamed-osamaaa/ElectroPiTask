@@ -29,13 +29,13 @@ async function seed() {
 
     // Create Admin
     await queryRunner.query(
-      `INSERT IGNORE INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`,
+      `INSERT IGNORE INTO users (id, name, email, password, role) VALUES (UUID(), ?, ?, ?, ?)`,
       ['Admin User', 'admin@demo.com', adminPassword, 'admin']
     );
 
     // Create Member
     await queryRunner.query(
-      `INSERT IGNORE INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`,
+      `INSERT IGNORE INTO users (id, name, email, password, role) VALUES (UUID(), ?, ?, ?, ?)`,
       ['Member User', 'member@demo.com', memberPassword, 'member']
     );
 
