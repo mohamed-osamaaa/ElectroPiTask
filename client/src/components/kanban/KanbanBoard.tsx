@@ -31,6 +31,11 @@ export function KanbanBoard({ initialTasks, projectId }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const queryClient = useQueryClient();
 
+  // Sync tasks when initialTasks prop changes
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
   // Optimistic update mutation
   const updateTaskMutation = useMutation({
     mutationFn: ({ taskId, data }: { taskId: number; data: Partial<Task> }) =>

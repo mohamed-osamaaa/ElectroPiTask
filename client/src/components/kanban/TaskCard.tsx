@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarIcon, Clock, MoreVertical, Edit2, Trash2 } from "lucide-react";
+import { Clock, MoreVertical, Edit2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import {
   DropdownMenu,
@@ -17,8 +17,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { TaskEditDialog } from "./TaskEditDialog";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/lib/api/tasks";
+import { usersApi } from "@/lib/api/users";
 import { toast } from "sonner";
 
 interface TaskCardProps {
@@ -28,6 +29,17 @@ interface TaskCardProps {
 export function TaskCard({ task }: TaskCardProps) {
   const [editOpen, setEditOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Fetch users to resolve assignee name
+  const { data: users = [] } = useQuery({
+    queryKey: ["users"],
+    queryFn: usersApi.getAll,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const assignee = task.assigneeId
+    ? (users as any[]).find((u) => u.id === task.assigneeId)
+    : null;
 
   const deleteMutation = useMutation({
     mutationFn: () => tasksApi.remove(task.projectId, task.id),
@@ -56,10 +68,7 @@ export function TaskCard({ task }: TaskCardProps) {
     isDragging,
   } = useSortable({
     id: task.id,
-    data: {
-      type: "Task",
-      task,
-    },
+    data: { type: "Task", task },
   });
 
   const style = {
@@ -75,15 +84,11 @@ export function TaskCard({ task }: TaskCardProps) {
 
   if (isDragging) {
     return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className="opacity-50 ring-2 ring-primary rounded-xl"
-      >
+      <div ref={setNodeRef} style={style} className="opacity-50 ring-2 ring-primary rounded-xl">
         <Card className="cursor-grab p-4 h-full bg-muted border-dashed border-2">
-           <div className="invisible">
-             <CardTitle>{task.title}</CardTitle>
-           </div>
+          <div className="invisible">
+            <CardTitle>{task.title}</CardTitle>
+          </div>
         </Card>
       </div>
     );
@@ -93,56 +98,65 @@ export function TaskCard({ task }: TaskCardProps) {
     <Card
       ref={setNodeRef}
       style={style}
-      className="group cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors shadow-sm relative"
+      className="group cursor-grab active:cursor-grabbing hover:border-primary/50 transition-all shadow-sm hover:shadow-md relative"
     >
       <div {...attributes} {...listeners} className="absolute inset-0 z-0" />
-      <CardHeader className="p-4 pb-2 relative z-10 flex flex-row justify-between items-start">
-        <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-sm font-medium leading-none mt-1">
-            {task.title}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className={priorityColors[task.priority]}>
-              {task.priority}
-            </Badge>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              } />
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
-                  <Edit2 className="h-4 w-4 mr-2" /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive" onClick={handleDelete}>
-                  <Trash2 className="h-4 w-4 mr-2" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+      <CardHeader className="p-4 pb-2 relative z-10 flex flex-row justify-between items-start gap-2">
+        <CardTitle className="text-sm font-medium leading-snug break-words flex-1">
+          {task.title}
+        </CardTitle>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${priorityColors[task.priority]}`}>
+            {task.priority}
+          </Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={
+              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            } />
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditOpen(true); }}>
+                <Edit2 className="h-4 w-4 mr-2" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4 mr-2" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
+
       <CardContent className="p-4 pt-0 text-xs text-muted-foreground relative z-10">
         {task.description && (
-          <p className="line-clamp-2 mb-3 mt-1">{task.description}</p>
+          <p className="line-clamp-2 mb-3 mt-1 text-[11px] leading-relaxed">{task.description}</p>
         )}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
           <div className="flex items-center gap-1 text-[10px]">
-             {task.dueDate && (
-               <>
-                 <Clock className="w-3 h-3" />
-                 {format(new Date(task.dueDate), 'MMM d')}
-               </>
-             )}
+            {task.dueDate && (
+              <>
+                <Clock className="w-3 h-3" />
+                {format(new Date(String(task.dueDate).substring(0, 10) + "T00:00:00"), "MMM d")}
+              </>
+            )}
           </div>
-          <Avatar className="h-6 w-6">
-            <AvatarFallback className="text-[10px]">
-              {task.assigneeId ? `U${task.assigneeId}` : "?"}
-            </AvatarFallback>
-          </Avatar>
+          {assignee ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground">{assignee.name}</span>
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="text-[9px] bg-primary/10 text-primary font-semibold">
+                  {assignee.name?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          ) : (
+            <Avatar className="h-6 w-6">
+              <AvatarFallback className="text-[9px] bg-muted text-muted-foreground">?</AvatarFallback>
+            </Avatar>
+          )}
         </div>
       </CardContent>
+
       {editOpen && (
         <TaskEditDialog task={task} open={editOpen} onOpenChange={setEditOpen} />
       )}

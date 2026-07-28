@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/lib/api/tasks";
+import { usersApi } from "@/lib/api/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Task, TaskStatus, TaskPriority } from "@/types";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { History, ArrowRight } from "lucide-react";
 
@@ -33,7 +33,8 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
   const [description, setDescription] = useState(task.description || "");
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
-  const [dueDate, setDueDate] = useState<string>(task.dueDate ? task.dueDate.substring(0, 10) : "");
+  const [dueDate, setDueDate] = useState<string>(task.dueDate ? String(task.dueDate).substring(0, 10) : "");
+  const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId ? String(task.assigneeId) : "none");
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -42,9 +43,16 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
       setDescription(task.description || "");
       setStatus(task.status);
       setPriority(task.priority);
-      setDueDate(task.dueDate ? task.dueDate.substring(0, 10) : "");
+      setDueDate(task.dueDate ? String(task.dueDate).substring(0, 10) : "");
+      setAssigneeId(task.assigneeId ? String(task.assigneeId) : "none");
     }
   }, [task, open]);
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["users"],
+    queryFn: usersApi.getAll,
+    enabled: open,
+  });
 
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ["taskHistory", task.id],
@@ -59,30 +67,39 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
       toast.success("Task updated successfully");
       onOpenChange(false);
     },
-    onError: () => {
-      toast.error("Failed to update task");
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to update task");
     }
   });
+
+  const hasChanges =
+    title !== task.title ||
+    description !== (task.description || "") ||
+    status !== task.status ||
+    priority !== task.priority ||
+    dueDate !== (task.dueDate ? String(task.dueDate).substring(0, 10) : "") ||
+    assigneeId !== (task.assigneeId ? String(task.assigneeId) : "none");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    mutation.mutate({ 
-      title, 
-      description, 
-      status, 
+    mutation.mutate({
+      title,
+      description: description || undefined,
+      status,
       priority,
-      dueDate: dueDate || undefined
+      dueDate: dueDate || undefined,
+      assigneeId: assigneeId && assigneeId !== "none" ? assigneeId : undefined,
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Edit Task</DialogTitle>
         </DialogHeader>
-        
+
         <Tabs defaultValue="details" className="w-full mt-2">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="details">Details</TabsTrigger>
@@ -90,12 +107,12 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
               <History className="h-4 w-4" /> History
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="details">
             <form onSubmit={handleSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label>Title</Label>
+                  <Label>Title <span className="text-destructive">*</span></Label>
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -108,12 +125,13 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Task description"
+                    rows={3}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Status</Label>
-                    <Select value={status} onValueChange={(val: any) => setStatus(val as TaskStatus || "todo")}>
+                    <Select value={status} onValueChange={(val) => setStatus(val as TaskStatus)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -126,7 +144,7 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
                   </div>
                   <div className="grid gap-2">
                     <Label>Priority</Label>
-                    <Select value={priority} onValueChange={(val: any) => setPriority(val as TaskPriority || "medium")}>
+                    <Select value={priority} onValueChange={(val) => setPriority(val as TaskPriority)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select priority" />
                       </SelectTrigger>
@@ -138,20 +156,38 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
                     </Select>
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Due Date</Label>
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Due Date</Label>
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Assignee</Label>
+                    <Select value={assigneeId} onValueChange={setAssigneeId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Assign to..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Unassigned</SelectItem>
+                        {users.map((u: any) => (
+                          <SelectItem key={u.id} value={String(u.id)}>
+                            {u.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={mutation.isPending || !title.trim() || (title === task.title && description === task.description && status === task.status && priority === task.priority && dueDate === (task.dueDate ? task.dueDate.substring(0, 10) : ""))}>
+                <Button type="submit" disabled={mutation.isPending || !title.trim() || !hasChanges}>
                   {mutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogFooter>
@@ -159,7 +195,7 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
           </TabsContent>
 
           <TabsContent value="history">
-            <div className="py-4 max-h-[300px] overflow-y-auto pr-2 space-y-4">
+            <div className="py-4 max-h-[300px] overflow-y-auto pr-2 space-y-3">
               {historyLoading ? (
                 <div className="text-center text-sm text-muted-foreground py-4">Loading history...</div>
               ) : !historyData || historyData.length === 0 ? (
@@ -168,16 +204,20 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
                 historyData.map((record: any) => (
                   <div key={record.id} className="flex items-start gap-3 text-sm bg-muted/30 p-3 rounded-lg border">
                     <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{record.changedBy?.email}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{record.changedBy?.name || record.changedBy?.email}</span>
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(record.changedAt), "MMM d, yyyy h:mm a")}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="bg-muted px-2 py-1 rounded text-xs capitalize">{record.oldStatus.replace('_', ' ')}</span>
+                        <span className="bg-muted px-2 py-0.5 rounded text-xs capitalize">
+                          {record.oldStatus.replace("_", " ")}
+                        </span>
                         <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                        <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs capitalize font-medium">{record.newStatus.replace('_', ' ')}</span>
+                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs capitalize font-medium">
+                          {record.newStatus.replace("_", " ")}
+                        </span>
                       </div>
                     </div>
                   </div>

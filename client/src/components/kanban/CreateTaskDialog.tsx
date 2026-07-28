@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/lib/api/tasks";
+import { usersApi } from "@/lib/api/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { TaskStatus, TaskPriority } from "@/types";
+import { toast } from "sonner";
 
 export function CreateTaskDialog({ projectId }: { projectId: number }) {
   const [open, setOpen] = useState(false);
@@ -26,30 +28,47 @@ export function CreateTaskDialog({ projectId }: { projectId: number }) {
   const [status, setStatus] = useState<TaskStatus>("todo");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState<string>("");
+  const [assigneeId, setAssigneeId] = useState<string>("");
   const queryClient = useQueryClient();
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["users"],
+    queryFn: usersApi.getAll,
+    enabled: open,
+  });
 
   const mutation = useMutation({
     mutationFn: (data: any) => tasksApi.create(projectId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
       setOpen(false);
-      setTitle("");
-      setDescription("");
-      setStatus("todo");
-      setPriority("medium");
-      setDueDate("");
+      resetForm();
+      toast.success("Task created successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Failed to create task");
     },
   });
+
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setStatus("todo");
+    setPriority("medium");
+    setDueDate("");
+    setAssigneeId("");
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    mutation.mutate({ 
-      title, 
-      description, 
-      status, 
-      priority, 
-      dueDate: dueDate || undefined 
+    mutation.mutate({
+      title,
+      description: description || undefined,
+      status,
+      priority,
+      dueDate: dueDate || undefined,
+      assigneeId: assigneeId && assigneeId !== "none" ? assigneeId : undefined,
     });
   };
 
@@ -61,18 +80,19 @@ export function CreateTaskDialog({ projectId }: { projectId: number }) {
           Add Task
         </Button>
       } />
-      <DialogContent>
+      <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Title</Label>
+              <Label>Title <span className="text-destructive">*</span></Label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
+                required
               />
             </div>
             <div className="grid gap-2">
@@ -80,13 +100,14 @@ export function CreateTaskDialog({ projectId }: { projectId: number }) {
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Task description"
+                placeholder="Task description (optional)"
+                rows={3}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Status</Label>
-                <Select value={status} onValueChange={(val: any) => setStatus(val as TaskStatus || "todo")}>
+                <Select value={status} onValueChange={(val) => setStatus(val as TaskStatus)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -99,7 +120,7 @@ export function CreateTaskDialog({ projectId }: { projectId: number }) {
               </div>
               <div className="grid gap-2">
                 <Label>Priority</Label>
-                <Select value={priority} onValueChange={(val: any) => setPriority(val as TaskPriority || "medium")}>
+                <Select value={priority} onValueChange={(val) => setPriority(val as TaskPriority)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
@@ -111,13 +132,31 @@ export function CreateTaskDialog({ projectId }: { projectId: number }) {
                 </Select>
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Due Date</Label>
-              <Input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Assignee</Label>
+                <Select value={assigneeId} onValueChange={setAssigneeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Assign to..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Unassigned</SelectItem>
+                    {users.map((u: any) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>

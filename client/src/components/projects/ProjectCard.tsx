@@ -58,7 +58,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
       whileHover={{ y: -5, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
     >
-      <Link href={`/dashboard/projects/${project.id}`}>
+      <Link href={`/projects/${project.id}`}>
         <Card className="h-full flex flex-col cursor-pointer transition-colors hover:border-primary/50 group bg-gradient-to-br from-card to-card/50 relative">
           <CardHeader>
             <div className="flex justify-between items-start gap-2">

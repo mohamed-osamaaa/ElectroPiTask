@@ -32,9 +32,15 @@ export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
         className="flex-1 p-2 flex flex-col gap-2 min-h-[150px] overflow-y-auto"
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
-          ))}
+          {tasks.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center border-2 border-dashed border-border/50 rounded-xl min-h-[100px]">
+              <span className="text-xs text-muted-foreground">No tasks</span>
+            </div>
+          ) : (
+            tasks.map((task) => (
+              <TaskCard key={task.id} task={task} />
+            ))
+          )}
         </SortableContext>
       </div>
     </div>
