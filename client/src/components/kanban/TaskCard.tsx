@@ -33,11 +33,9 @@ export function TaskCard({ task, isProjectOwner }: TaskCardProps) {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
 
-  // Match backend logic: Admin, Project Owner, Task Creator, or Task Assignee can edit
+  // Only admin or the assigned member can edit/delete a task
   const canEdit =
     currentUser?.role === "admin" ||
-    isProjectOwner ||
-    task.creatorId === currentUser?.id ||
     task.assigneeId === currentUser?.id;
 
   // Fetch project members to resolve assignee name without exposing unrelated users.

@@ -201,12 +201,11 @@ export function KanbanBoard({ initialTasks, projectId, isProjectOwner }: KanbanB
       return;
     }
 
-    // Permission check matching backend: Admin, Project Owner, Task Creator, or Task Assignee
+    // Only admin or the assigned member can move a task between columns
     const isAdmin = currentUser?.role === "admin";
     const isAssigned = task.assigneeId === currentUser?.id;
-    const isCreator = task.creatorId === currentUser?.id;
 
-    if (!isAdmin && !isAssigned && !isCreator && !isProjectOwner) {
+    if (!isAdmin && !isAssigned) {
       // Revert optimistic UI update back to origin status
       setTasks((prev) =>
         prev.map((t) =>

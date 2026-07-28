@@ -214,27 +214,27 @@ describe('TasksService', () => {
   // ─────────────────────────────────────────────────────────────────────────
   describe('update', () => {
     it('should save a TaskHistory record when status changes', async () => {
-      tasksRepository.findOne.mockResolvedValue(mockTask); // findOne returns task with status: todo
+      tasksRepository.findOne.mockResolvedValue({ ...mockTask, assigneeId: memberId }); // assignee can edit
 
       const dto = { status: TaskStatus.IN_PROGRESS };
-      await service.update(mockTask.id, projectId, dto, ownerId, 'member');
+      await service.update(mockTask.id, projectId, dto, memberId, 'member');
 
       expect(taskHistoryRepository.create).toHaveBeenCalledWith({
         taskId: mockTask.id,
         projectId,
         oldStatus: TaskStatus.TODO,
         newStatus: TaskStatus.IN_PROGRESS,
-        changedById: ownerId,
+        changedById: memberId,
       });
       expect(taskHistoryRepository.save).toHaveBeenCalled();
       expect(tasksGateway.notifyTaskUpdated).toHaveBeenCalled();
     });
 
     it('should NOT save TaskHistory if status does not change', async () => {
-      tasksRepository.findOne.mockResolvedValue(mockTask); // status: todo
+      tasksRepository.findOne.mockResolvedValue({ ...mockTask, assigneeId: memberId }); // assignee can edit
 
       const dto = { status: TaskStatus.TODO }; // same status
-      await service.update(mockTask.id, projectId, dto, ownerId, 'member');
+      await service.update(mockTask.id, projectId, dto, memberId, 'member');
 
       expect(taskHistoryRepository.create).not.toHaveBeenCalled();
       expect(taskHistoryRepository.save).not.toHaveBeenCalled();
@@ -245,10 +245,10 @@ describe('TasksService', () => {
   // remove
   // ─────────────────────────────────────────────────────────────────────────
   describe('remove', () => {
-    it('should allow the task creator to delete the task', async () => {
-      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: ownerId });
+    it('should allow the assignee to delete the task', async () => {
+      tasksRepository.findOne.mockResolvedValue({ ...mockTask, assigneeId: memberId });
 
-      const result = await service.remove(mockTask.id, projectId, ownerId, 'member');
+      const result = await service.remove(mockTask.id, projectId, memberId, 'member');
 
       expect(tasksRepository.delete).toHaveBeenCalledWith(mockTask.id);
       expect(tasksGateway.notifyTaskDeleted).toHaveBeenCalledWith(projectId, mockTask.id);
@@ -256,7 +256,7 @@ describe('TasksService', () => {
     });
 
     it('should allow an admin to delete any task', async () => {
-      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: outsiderId });
+      tasksRepository.findOne.mockResolvedValue({ ...mockTask, assigneeId: outsiderId });
 
       const result = await service.remove(mockTask.id, projectId, memberId, 'admin');
 
@@ -264,8 +264,8 @@ describe('TasksService', () => {
       expect(result).toEqual({ success: true });
     });
 
-    it('should throw ForbiddenException for a member who is not the creator or owner', async () => {
-      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: outsiderId });
+    it('should throw ForbiddenException for a member who is not the assignee or admin', async () => {
+      tasksRepository.findOne.mockResolvedValue({ ...mockTask, assigneeId: outsiderId });
 
       await expect(service.remove(mockTask.id, projectId, memberId, 'member')).rejects.toThrow(ForbiddenException);
     });

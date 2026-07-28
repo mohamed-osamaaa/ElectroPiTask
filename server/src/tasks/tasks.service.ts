@@ -124,14 +124,12 @@ export class TasksService {
 
   async update(id: string, projectId: string, updateTaskDto: UpdateTaskDto, userId: string, role: string) {
     const task = await this.findOne(id, projectId, userId, role);
-    const project = await this.projectsService.findOne(projectId, userId, role);
 
-    const isProjectOwner = project.ownerId === userId;
-    const isTaskCreator = task.creatorId === userId;
     const isAssignee = task.assigneeId === userId;
     const isAdmin = role === 'admin';
 
-    if (!isAdmin && !isProjectOwner && !isTaskCreator && !isAssignee) {
+    // Only admin or the assigned member can update a task
+    if (!isAdmin && !isAssignee) {
       throw new ForbiddenException('You do not have permission to edit this task');
     }
 
@@ -166,14 +164,14 @@ export class TasksService {
   }
 
   async remove(id: string, projectId: string, userId: string, role: string) {
-    const project = await this.projectsService.findOne(projectId, userId, role);
+    await this.projectsService.findOne(projectId, userId, role);
     const task = await this.findOne(id, projectId, userId, role);
 
-    const isProjectOwner = project.ownerId === userId;
-    const isTaskCreator = task.creatorId === userId;
+    const isAssignee = task.assigneeId === userId;
     const isAdmin = role === 'admin';
 
-    if (!isAdmin && !isProjectOwner && !isTaskCreator) {
+    // Only admin or the assigned member can delete a task
+    if (!isAdmin && !isAssignee) {
       throw new ForbiddenException('You do not have permission to delete this task');
     }
 
