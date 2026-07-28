@@ -105,6 +105,16 @@ export class TasksService {
 
   async update(id: string, projectId: string, updateTaskDto: UpdateTaskDto, userId: string, role: string) {
     const task = await this.findOne(id, projectId, userId, role);
+    const project = await this.projectsService.findOne(projectId, userId, role);
+
+    const isProjectOwner = project.ownerId === userId;
+    const isTaskCreator = task.creatorId === userId;
+    const isAssignee = task.assigneeId === userId;
+    const isAdmin = role === 'admin';
+
+    if (!isAdmin && !isProjectOwner && !isTaskCreator && !isAssignee) {
+      throw new ForbiddenException('You do not have permission to edit this task');
+    }
 
     if (updateTaskDto.assigneeId) {
       const assignee = await this.usersService.findById(updateTaskDto.assigneeId);
@@ -114,6 +124,7 @@ export class TasksService {
     if (updateTaskDto.status && updateTaskDto.status !== task.status) {
       const history = this.taskHistoryRepository.create({
         taskId: task.id,
+        projectId,
         oldStatus: task.status,
         newStatus: updateTaskDto.status,
         changedById: userId,
@@ -131,12 +142,14 @@ export class TasksService {
   }
 
   async remove(id: string, projectId: string, userId: string, role: string) {
-    // Only Admin can delete tasks (as per requirement: "delete tasks inside a project" and "prevent unauthorized users...").
-    // Let's assume Admin or Task Creator or Project Owner can delete. For simplicity, we just check Admin or Project Owner.
     const project = await this.projectsService.findOne(projectId, userId, role);
     const task = await this.findOne(id, projectId, userId, role);
 
-    if (role !== 'admin' && project.ownerId !== userId && task.creatorId !== userId) {
+    const isProjectOwner = project.ownerId === userId;
+    const isTaskCreator = task.creatorId === userId;
+    const isAdmin = role === 'admin';
+
+    if (!isAdmin && !isProjectOwner && !isTaskCreator) {
       throw new ForbiddenException('You do not have permission to delete this task');
     }
 
