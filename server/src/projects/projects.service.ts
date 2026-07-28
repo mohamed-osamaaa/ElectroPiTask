@@ -7,6 +7,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UsersService } from '../users/users.service';
+import { User, UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class ProjectsService {
@@ -15,6 +16,8 @@ export class ProjectsService {
     private projectsRepository: Repository<Project>,
     @InjectRepository(ProjectMember)
     private projectMembersRepository: Repository<ProjectMember>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
     private usersService: UsersService,
   ) {}
 
@@ -74,12 +77,31 @@ export class ProjectsService {
       relations: { user: true },
     });
 
-    return memberships.map((m) => ({
-      id: m.user.id,
-      name: m.user.name,
-      email: m.user.email,
-      role: m.user.role,
-    }));
+    const memberMap = new Map<string, { id: string; name: string; email: string; role: string }>();
+
+    for (const m of memberships) {
+      memberMap.set(m.user.id, {
+        id: m.user.id,
+        name: m.user.name,
+        email: m.user.email,
+        role: m.user.role,
+      });
+    }
+
+    // Always include all admin users in the list so they can be assigned to tasks
+    const admins = await this.usersRepository.find({ where: { role: UserRole.ADMIN } });
+    for (const admin of admins) {
+      if (!memberMap.has(admin.id)) {
+        memberMap.set(admin.id, {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+        });
+      }
+    }
+
+    return Array.from(memberMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async isMember(projectId: string, userId: string) {
