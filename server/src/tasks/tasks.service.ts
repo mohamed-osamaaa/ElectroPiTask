@@ -29,6 +29,11 @@ export class TasksService {
     if (createTaskDto.assigneeId) {
       const assignee = await this.usersService.findById(createTaskDto.assigneeId);
       if (!assignee) throw new BadRequestException('Assignee not found');
+
+      const isAssigneeProjectMember = await this.projectsService.isMember(projectId, createTaskDto.assigneeId);
+      if (!isAssigneeProjectMember) {
+        throw new BadRequestException('Assignee must be a member of this project');
+      }
     }
 
     const task = this.tasksRepository.create({
@@ -49,7 +54,16 @@ export class TasksService {
     // Verify access
     await this.projectsService.findOne(projectId, userId, role);
 
-    const { status, priority, assigneeId, page = 1, limit = 10 } = filterDto;
+    const {
+      status,
+      priority,
+      assigneeId,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      page = 1,
+      limit = 10,
+    } = filterDto;
     
     const query = this.tasksRepository.createQueryBuilder('task')
       .where('task.projectId = :projectId', { projectId });
@@ -63,9 +77,14 @@ export class TasksService {
     if (assigneeId) {
       query.andWhere('task.assigneeId = :assigneeId', { assigneeId });
     }
+    if (search?.trim()) {
+      query.andWhere('(task.title LIKE :search OR task.description LIKE :search)', {
+        search: `%${search.trim()}%`,
+      });
+    }
 
     query.skip((page - 1) * limit).take(limit);
-    query.orderBy('task.createdAt', 'DESC');
+    query.orderBy(`task.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC');
 
     const [tasks, total] = await query.getManyAndCount();
 
@@ -119,6 +138,11 @@ export class TasksService {
     if (updateTaskDto.assigneeId) {
       const assignee = await this.usersService.findById(updateTaskDto.assigneeId);
       if (!assignee) throw new BadRequestException('Assignee not found');
+
+      const isAssigneeProjectMember = await this.projectsService.isMember(projectId, updateTaskDto.assigneeId);
+      if (!isAssigneeProjectMember) {
+        throw new BadRequestException('Assignee must be a member of this project');
+      }
     }
 
     if (updateTaskDto.status && updateTaskDto.status !== task.status) {

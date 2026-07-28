@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/lib/api/tasks";
-import { usersApi } from "@/lib/api/users";
+import { projectsApi } from "@/lib/api/projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,9 +48,9 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
     }
   }, [task, open]);
 
-  const { data: users = [] } = useQuery({
-    queryKey: ["users"],
-    queryFn: usersApi.getAll,
+  const { data: members = [] } = useQuery({
+    queryKey: ["project-members", task.projectId],
+    queryFn: () => projectsApi.getMembers(task.projectId),
     enabled: open,
   });
 
@@ -173,9 +173,9 @@ export function TaskEditDialog({ task, open, onOpenChange }: TaskEditDialogProps
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Unassigned</SelectItem>
-                        {users.map((u: any) => (
-                          <SelectItem key={u.id} value={String(u.id)}>
-                            {u.name}
+                        {members.map((member: any) => (
+                          <SelectItem key={member.id} value={String(member.id)}>
+                            {member.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

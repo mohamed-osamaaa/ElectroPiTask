@@ -19,7 +19,7 @@ import { TaskEditDialog } from "./TaskEditDialog";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/lib/api/tasks";
-import { usersApi } from "@/lib/api/users";
+import { projectsApi } from "@/lib/api/projects";
 import { useAuthStore } from "@/store/auth.store";
 import { toast } from "sonner";
 
@@ -40,15 +40,15 @@ export function TaskCard({ task, isProjectOwner }: TaskCardProps) {
     task.creatorId === currentUser?.id ||
     task.assigneeId === currentUser?.id;
 
-  // Fetch users to resolve assignee name
-  const { data: users = [] } = useQuery({
-    queryKey: ["users"],
-    queryFn: usersApi.getAll,
+  // Fetch project members to resolve assignee name without exposing unrelated users.
+  const { data: members = [] } = useQuery({
+    queryKey: ["project-members", task.projectId],
+    queryFn: () => projectsApi.getMembers(task.projectId),
     staleTime: 5 * 60 * 1000,
   });
 
   const assignee = task.assigneeId
-    ? (users as any[]).find((u) => u.id === task.assigneeId)
+    ? (members as any[]).find((member) => member.id === task.assigneeId)
     : null;
 
   const deleteMutation = useMutation({

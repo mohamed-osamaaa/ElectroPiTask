@@ -12,15 +12,15 @@ import { NotFoundException, BadRequestException, ForbiddenException } from '@nes
 // Shared mock data
 // ---------------------------------------------------------------------------
 const mockTask = {
-  id: 1,
+  id: '00000000-0000-4000-8000-000000000001',
   title: 'Fix login bug',
   description: 'Users cannot login on mobile',
   status: TaskStatus.TODO,
   priority: TaskPriority.HIGH,
   dueDate: null,
-  projectId: 1,
+  projectId: '00000000-0000-4000-8000-000000000010',
   project: null,
-  creatorId: 2,
+  creatorId: '00000000-0000-4000-8000-000000000002',
   creator: null,
   assigneeId: null,
   assignee: null,
@@ -28,7 +28,11 @@ const mockTask = {
   updatedAt: new Date(),
 } as unknown as Task;
 
-const mockProject = { id: 1, ownerId: 2 };
+const projectId = '00000000-0000-4000-8000-000000000010';
+const ownerId = '00000000-0000-4000-8000-000000000002';
+const memberId = '00000000-0000-4000-8000-000000000003';
+const outsiderId = '00000000-0000-4000-8000-000000000099';
+const mockProject = { id: projectId, ownerId };
 
 // ---------------------------------------------------------------------------
 // Mock factories
@@ -57,10 +61,11 @@ const createMockTaskHistoryRepository = () => ({
 
 const createMockProjectsService = () => ({
   findOne: jest.fn().mockResolvedValue(mockProject),
+  isMember: jest.fn().mockResolvedValue(true),
 });
 
 const createMockUsersService = () => ({
-  findById: jest.fn(),
+  findById: jest.fn().mockResolvedValue({ id: memberId }),
 });
 
 const createMockTasksGateway = () => ({
@@ -108,19 +113,36 @@ describe('TasksService', () => {
   // ─────────────────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('should verify project access before returning tasks', async () => {
-      await service.findAll(1, {}, 1, 'member');
+      await service.findAll(projectId, {}, ownerId, 'member');
 
-      expect(projectsService.findOne).toHaveBeenCalledWith(1, 1, 'member');
+      expect(projectsService.findOne).toHaveBeenCalledWith(projectId, ownerId, 'member');
       expect(tasksRepository.createQueryBuilder).toHaveBeenCalledWith('task');
     });
 
     it('should return paginated tasks with metadata', async () => {
-      const result = await service.findAll(1, { page: 1, limit: 10 }, 1, 'admin');
+      const result = await service.findAll(projectId, { page: 1, limit: 10 }, ownerId, 'admin');
 
       expect(result).toEqual({
         data: [mockTask],
         meta: { total: 1, page: 1, lastPage: 1 },
       });
+    });
+
+    it('should apply search and sorting query options', async () => {
+      await service.findAll(
+        projectId,
+        { search: 'login', sortBy: 'dueDate', sortOrder: 'asc' },
+        ownerId,
+        'member',
+      );
+
+      const queryBuilder = tasksRepository.createQueryBuilder.mock.results[0].value;
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        '(task.title LIKE :search OR task.description LIKE :search)',
+        { search: '%login%' },
+      );
+      expect(queryBuilder.orderBy).toHaveBeenCalledWith('task.dueDate', 'ASC');
     });
   });
 
@@ -131,20 +153,39 @@ describe('TasksService', () => {
     it('should create a task and notify via WebSocket', async () => {
       const dto = { title: 'New Task' };
 
-      const result = await service.create(1, dto as any, 2, 'member');
+      const result = await service.create(projectId, dto as any, ownerId, 'member');
 
-      expect(projectsService.findOne).toHaveBeenCalledWith(1, 2, 'member');
-      expect(tasksRepository.create).toHaveBeenCalledWith({ ...dto, projectId: 1, creatorId: 2 });
+      expect(projectsService.findOne).toHaveBeenCalledWith(projectId, ownerId, 'member');
+      expect(tasksRepository.create).toHaveBeenCalledWith({ ...dto, projectId, creatorId: ownerId });
       expect(tasksRepository.save).toHaveBeenCalled();
-      expect(tasksGateway.notifyTaskCreated).toHaveBeenCalledWith(1, expect.any(Object));
+      expect(tasksGateway.notifyTaskCreated).toHaveBeenCalledWith(projectId, expect.any(Object));
       expect(result).toBeDefined();
+    });
+
+    it('should create a task when the assignee is a project member', async () => {
+      const dto = { title: 'New Task', assigneeId: memberId };
+
+      await service.create(projectId, dto as any, ownerId, 'member');
+
+      expect(usersService.findById).toHaveBeenCalledWith(memberId);
+      expect(projectsService.isMember).toHaveBeenCalledWith(projectId, memberId);
+      expect(tasksRepository.save).toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if assignee does not exist', async () => {
       usersService.findById.mockResolvedValue(null);
 
       await expect(
-        service.create(1, { title: 'Task', assigneeId: 999 } as any, 2, 'member'),
+        service.create(projectId, { title: 'Task', assigneeId: outsiderId } as any, ownerId, 'member'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if assignee is not a project member', async () => {
+      usersService.findById.mockResolvedValue({ id: outsiderId });
+      projectsService.isMember.mockResolvedValue(false);
+
+      await expect(
+        service.create(projectId, { title: 'Task', assigneeId: outsiderId } as any, ownerId, 'member'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -156,7 +197,7 @@ describe('TasksService', () => {
     it('should return the task if it exists in the project', async () => {
       tasksRepository.findOne.mockResolvedValue(mockTask);
 
-      const result = await service.findOne(1, 1, 2, 'member');
+      const result = await service.findOne(mockTask.id, projectId, ownerId, 'member');
 
       expect(result).toEqual(mockTask);
     });
@@ -164,7 +205,7 @@ describe('TasksService', () => {
     it('should throw NotFoundException if task does not exist', async () => {
       tasksRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne(999, 1, 2, 'member')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(outsiderId, projectId, ownerId, 'member')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -176,13 +217,14 @@ describe('TasksService', () => {
       tasksRepository.findOne.mockResolvedValue(mockTask); // findOne returns task with status: todo
 
       const dto = { status: TaskStatus.IN_PROGRESS };
-      await service.update(1, 1, dto, 2, 'member');
+      await service.update(mockTask.id, projectId, dto, ownerId, 'member');
 
       expect(taskHistoryRepository.create).toHaveBeenCalledWith({
         taskId: mockTask.id,
+        projectId,
         oldStatus: TaskStatus.TODO,
         newStatus: TaskStatus.IN_PROGRESS,
-        changedById: 2,
+        changedById: ownerId,
       });
       expect(taskHistoryRepository.save).toHaveBeenCalled();
       expect(tasksGateway.notifyTaskUpdated).toHaveBeenCalled();
@@ -192,7 +234,7 @@ describe('TasksService', () => {
       tasksRepository.findOne.mockResolvedValue(mockTask); // status: todo
 
       const dto = { status: TaskStatus.TODO }; // same status
-      await service.update(1, 1, dto, 2, 'member');
+      await service.update(mockTask.id, projectId, dto, ownerId, 'member');
 
       expect(taskHistoryRepository.create).not.toHaveBeenCalled();
       expect(taskHistoryRepository.save).not.toHaveBeenCalled();
@@ -204,29 +246,28 @@ describe('TasksService', () => {
   // ─────────────────────────────────────────────────────────────────────────
   describe('remove', () => {
     it('should allow the task creator to delete the task', async () => {
-      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: 2 });
+      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: ownerId });
 
-      const result = await service.remove(1, 1, 2, 'member'); // userId=2 is creator
+      const result = await service.remove(mockTask.id, projectId, ownerId, 'member');
 
-      expect(tasksRepository.delete).toHaveBeenCalledWith(1);
-      expect(tasksGateway.notifyTaskDeleted).toHaveBeenCalledWith(1, 1);
+      expect(tasksRepository.delete).toHaveBeenCalledWith(mockTask.id);
+      expect(tasksGateway.notifyTaskDeleted).toHaveBeenCalledWith(projectId, mockTask.id);
       expect(result).toEqual({ success: true });
     });
 
     it('should allow an admin to delete any task', async () => {
-      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: 99 });
+      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: outsiderId });
 
-      const result = await service.remove(1, 1, 5, 'admin'); // userId=5 is not creator, but is admin
+      const result = await service.remove(mockTask.id, projectId, memberId, 'admin');
 
-      expect(tasksRepository.delete).toHaveBeenCalledWith(1);
+      expect(tasksRepository.delete).toHaveBeenCalledWith(mockTask.id);
       expect(result).toEqual({ success: true });
     });
 
     it('should throw ForbiddenException for a member who is not the creator or owner', async () => {
-      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: 99 });
-      // mockProject.ownerId = 2, but current user is 5 (not owner, not creator)
+      tasksRepository.findOne.mockResolvedValue({ ...mockTask, creatorId: outsiderId });
 
-      await expect(service.remove(1, 1, 5, 'member')).rejects.toThrow(ForbiddenException);
+      await expect(service.remove(mockTask.id, projectId, memberId, 'member')).rejects.toThrow(ForbiddenException);
     });
   });
 });

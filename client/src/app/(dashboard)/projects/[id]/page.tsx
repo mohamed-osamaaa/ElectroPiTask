@@ -22,7 +22,14 @@ export default function ProjectKanbanPage() {
 
   // All project members see all tasks by default (per requirements).
   // The assignee filter is optional — users can filter by any member including themselves.
-  const [filters, setFilters] = useState<{ status?: string; priority?: string; assigneeId?: string }>({});
+  const [filters, setFilters] = useState<{
+    status?: string;
+    priority?: string;
+    assigneeId?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }>({});
 
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery({
     queryKey: ["project", projectId],

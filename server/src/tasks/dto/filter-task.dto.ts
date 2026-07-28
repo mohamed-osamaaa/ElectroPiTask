@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, Min, IsUUID } from 'class-validator';
+import { IsEnum, IsIn, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TaskPriority, TaskStatus } from '../entities/task.entity';
@@ -18,6 +18,21 @@ export class FilterTaskDto {
   @IsOptional()
   @IsUUID()
   assigneeId?: string;
+
+  @ApiPropertyOptional({ example: 'login' })
+  @IsString()
+  @IsOptional()
+  search?: string;
+
+  @ApiPropertyOptional({ enum: ['createdAt', 'dueDate', 'priority', 'title'], default: 'createdAt' })
+  @IsIn(['createdAt', 'dueDate', 'priority', 'title'])
+  @IsOptional()
+  sortBy?: 'createdAt' | 'dueDate' | 'priority' | 'title' = 'createdAt';
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
+  @IsIn(['asc', 'desc'])
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc' = 'desc';
 
   @ApiPropertyOptional({ default: 1, minimum: 1 })
   @Type(() => Number)

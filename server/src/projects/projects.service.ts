@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
@@ -82,6 +82,14 @@ export class ProjectsService {
     }));
   }
 
+  async isMember(projectId: string, userId: string) {
+    const membership = await this.projectMembersRepository.findOne({
+      where: { projectId, userId },
+    });
+
+    return Boolean(membership);
+  }
+
   async update(id: string, updateProjectDto: UpdateProjectDto, userId: string, role: string) {
     const project = await this.findOne(id, userId, role);
     
@@ -140,6 +148,10 @@ export class ProjectsService {
 
     if (role !== 'admin' && project.ownerId !== currentUserId) {
       throw new ForbiddenException('Only admins or the project owner can remove members');
+    }
+
+    if (project.ownerId === userIdToRemove) {
+      throw new BadRequestException('Project owner cannot be removed from members');
     }
 
     const membership = await this.projectMembersRepository.findOne({

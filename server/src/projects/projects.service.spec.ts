@@ -4,16 +4,24 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { UsersService } from '../users/users.service';
+import { BadRequestException } from '@nestjs/common';
+
+const projectId = '00000000-0000-4000-8000-000000000010';
+const ownerId = '00000000-0000-4000-8000-000000000001';
+const memberId = '00000000-0000-4000-8000-000000000002';
 
 describe('ProjectsService', () => {
   let service: ProjectsService;
 
   const mockProjectRepository = {
     find: jest.fn(),
+    findOne: jest.fn(),
   };
 
   const mockProjectMemberRepository = {
     find: jest.fn(),
+    findOne: jest.fn(),
+    delete: jest.fn(),
   };
 
   const mockUsersService = {};
@@ -37,10 +45,10 @@ describe('ProjectsService', () => {
 
   describe('findAllForUser', () => {
     it('should return all projects for an admin', async () => {
-      const projects = [{ id: 1, name: 'Project 1' }];
+      const projects = [{ id: projectId, name: 'Project 1' }];
       mockProjectRepository.find.mockResolvedValue(projects);
 
-      const result = await service.findAllForUser(1, 'admin');
+      const result = await service.findAllForUser(ownerId, 'admin');
       
       expect(result).toEqual(projects);
       expect(mockProjectRepository.find).toHaveBeenCalled();
@@ -48,17 +56,29 @@ describe('ProjectsService', () => {
 
     it('should return only member projects for a normal member', async () => {
       const memberships = [
-        { id: 1, projectId: 1, userId: 2, project: { id: 1, name: 'Project 1' } },
+        { id: 'membership-id', projectId, userId: memberId, project: { id: projectId, name: 'Project 1' } },
       ];
       mockProjectMemberRepository.find.mockResolvedValue(memberships);
 
-      const result = await service.findAllForUser(2, 'member');
+      const result = await service.findAllForUser(memberId, 'member');
       
-      expect(result).toEqual([{ id: 1, name: 'Project 1' }]);
+      expect(result).toEqual([{ id: projectId, name: 'Project 1' }]);
       expect(mockProjectMemberRepository.find).toHaveBeenCalledWith({
-        where: { userId: 2 },
+        where: { userId: memberId },
         relations: { project: true },
       });
+    });
+  });
+
+  describe('removeMember', () => {
+    it('should reject removing the project owner from members', async () => {
+      mockProjectRepository.findOne.mockResolvedValue({ id: projectId, ownerId });
+
+      await expect(service.removeMember(projectId, ownerId, ownerId, 'admin')).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(mockProjectMemberRepository.delete).not.toHaveBeenCalled();
     });
   });
 });
