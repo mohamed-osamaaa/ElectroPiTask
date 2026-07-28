@@ -50,6 +50,12 @@ async function seed() {
       [member5Id, 'Omar Khaled', 'omar@demo.com', memberPassword, 'member'],
     ];
 
+    // Generate 30 extra users for pagination testing
+    for (let i = 1; i <= 30; i++) {
+      const id = crypto.randomUUID();
+      users.push([id, `Test User ${i}`, `testuser${i}@demo.com`, memberPassword, 'member']);
+    }
+
     for (const user of users) {
       await queryRunner.query(
         `INSERT IGNORE INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)`,
@@ -68,14 +74,6 @@ async function seed() {
       [project3Id, 'Internal Dashboard', 'Dashboard for employee metrics', member1Id],
     ];
 
-    for (const project of projects) {
-      await queryRunner.query(
-        `INSERT IGNORE INTO projects (id, name, description, owner_id) VALUES (?, ?, ?, ?)`,
-        project
-      );
-    }
-
-    console.log('Seeding Project Members...');
     const projectMembers = [
       // Project 1 members
       [crypto.randomUUID(), project1Id, adminId],
@@ -92,14 +90,6 @@ async function seed() {
       [crypto.randomUUID(), project3Id, member5Id],
     ];
 
-    for (const pm of projectMembers) {
-      await queryRunner.query(
-        `INSERT IGNORE INTO project_members (id, project_id, user_id) VALUES (?, ?, ?)`,
-        pm
-      );
-    }
-
-    console.log('Seeding Tasks...');
     const tasks = [
       // Project 1 Tasks
       [crypto.randomUUID(), 'Design Homepage Mockup', 'Create Figma designs for the new homepage', 'done', 'high', project1Id, adminId, member1Id],
@@ -121,6 +111,81 @@ async function seed() {
       [crypto.randomUUID(), 'QA Testing', 'Test the dashboard with dummy data', 'todo', 'medium', project3Id, member1Id, null], // Unassigned
     ];
 
+    // Generate 20 extra projects for pagination testing
+    for (let i = 1; i <= 20; i++) {
+      const pId = crypto.randomUUID();
+      projects.push([pId, `Generated Project ${i}`, `This is a generated project for testing purposes.`, adminId]);
+      
+      // Owner is always a member
+      projectMembers.push([crypto.randomUUID(), pId, adminId]);
+
+      // Add a few random members
+      const randomMembers = [member1Id, member2Id, member3Id, member4Id, member5Id].sort(() => 0.5 - Math.random()).slice(0, 3);
+      for (const mId of randomMembers) {
+        projectMembers.push([crypto.randomUUID(), pId, mId]);
+      }
+
+      // Generate 5-10 tasks for each extra project
+      const taskCount = Math.floor(Math.random() * 6) + 5;
+      const statuses = ['todo', 'in_progress', 'done'];
+      const priorities = ['low', 'medium', 'high'];
+      
+      for (let j = 1; j <= taskCount; j++) {
+        const tStatus = statuses[Math.floor(Math.random() * statuses.length)];
+        const tPriority = priorities[Math.floor(Math.random() * priorities.length)];
+        const tAssignee = Math.random() > 0.3 ? randomMembers[Math.floor(Math.random() * randomMembers.length)] : null;
+        
+        tasks.push([
+          crypto.randomUUID(),
+          `Auto Task ${j} - Proj ${i}`,
+          `Generated task description ${j}`,
+          tStatus,
+          tPriority,
+          pId,
+          adminId,
+          tAssignee
+        ]);
+      }
+    }
+
+    // Generate 50 extra tasks for project 1 to specifically test task pagination
+    const statusesList = ['todo', 'in_progress', 'done'];
+    const prioritiesList = ['low', 'medium', 'high'];
+    const p1Members = [adminId, member1Id, member2Id, member3Id];
+    
+    for (let k = 1; k <= 50; k++) {
+        const tStatus = statusesList[Math.floor(Math.random() * statusesList.length)];
+        const tPriority = prioritiesList[Math.floor(Math.random() * prioritiesList.length)];
+        const tAssignee = Math.random() > 0.2 ? p1Members[Math.floor(Math.random() * p1Members.length)] : null;
+        
+        tasks.push([
+          crypto.randomUUID(),
+          `Extra Task ${k} (P1)`,
+          `Extra generated task for project 1 testing.`,
+          tStatus,
+          tPriority,
+          project1Id,
+          adminId,
+          tAssignee
+        ]);
+    }
+
+    for (const project of projects) {
+      await queryRunner.query(
+        `INSERT IGNORE INTO projects (id, name, description, owner_id) VALUES (?, ?, ?, ?)`,
+        project
+      );
+    }
+
+    console.log('Seeding Project Members...');
+    for (const pm of projectMembers) {
+      await queryRunner.query(
+        `INSERT IGNORE INTO project_members (id, project_id, user_id) VALUES (?, ?, ?)`,
+        pm
+      );
+    }
+
+    console.log('Seeding Tasks...');
     for (const task of tasks) {
       await queryRunner.query(
         `INSERT IGNORE INTO tasks (id, title, description, status, priority, project_id, creator_id, assignee_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
