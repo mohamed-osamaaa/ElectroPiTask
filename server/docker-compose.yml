@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: electopi_app
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USERNAME=root
+      - DB_PASSWORD=root_password
+      - DB_NAME=ElectroPiTask
+      - DB_SYNC=false
+      - DB_LOGGING=true
+      - JWT_SECRET=docker_secret_key
+      - JWT_EXPIRES_IN=7d
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    container_name: electopi_db
+    ports:
+      - '3306:3306'
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=ElectroPiTask
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+volumes:
+  db_data:
