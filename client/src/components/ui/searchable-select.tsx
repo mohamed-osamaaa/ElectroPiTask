@@ -177,7 +177,7 @@ export function SearchableSelect({
                     aria-selected={isSelected}
                     onClick={() => handleSelect(option.value)}
                     className={cn(
-                      "relative flex w-full cursor-default items-center gap-2 rounded-md py-1.5 pr-8 pl-2 text-sm outline-none select-none transition-colors",
+                      "relative flex w-full cursor-pointer items-center gap-2 rounded-md py-1.5 pr-8 pl-2 text-sm outline-none select-none transition-colors",
                       "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
                       isSelected && "bg-accent/50 font-medium"
                     )}

@@ -136,4 +136,32 @@
   html {
     @apply font-sans;
   }
+  
+  /* UX Improvement: Add cursor pointer to all interactive elements */
+  button:not(:disabled), 
+  a:not([aria-disabled="true"]), 
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  [role="checkbox"]:not([aria-disabled="true"]),
+  [role="radio"]:not([aria-disabled="true"]),
+  [data-slot="button"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+
+  /* Target specific action icons */
+  svg.lucide-trash-2,
+  svg.lucide-trash,
+  svg.lucide-edit-2,
+  svg.lucide-edit,
+  svg.lucide-user-plus,
+  svg.lucide-plus,
+  svg.lucide-more-vertical,
+  svg.lucide-more-horizontal,
+  svg.lucide-x,
+  svg.lucide-settings,
+  svg.lucide-log-out {
+    @apply cursor-pointer;
+  }
 }
