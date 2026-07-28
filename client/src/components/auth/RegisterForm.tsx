@@ -109,6 +109,13 @@ export function RegisterForm() {
           <Button type="submit" className="w-full" disabled={mutation.isPending}>
             {mutation.isPending ? "Registering..." : "Register"}
           </Button>
+
+          <div className="text-center text-sm text-muted-foreground mt-4">
+            Already have an account?{" "}
+            <a href="/login" className="text-primary hover:underline">
+              Login here
+            </a>
+          </div>
         </form>
       </Form>
     </div>
