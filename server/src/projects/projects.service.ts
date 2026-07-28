@@ -18,7 +18,7 @@ export class ProjectsService {
     private usersService: UsersService,
   ) {}
 
-  async create(createProjectDto: CreateProjectDto, userId: number) {
+  async create(createProjectDto: CreateProjectDto, userId: string) {
     const project = this.projectsRepository.create({
       ...createProjectDto,
       ownerId: userId,
@@ -37,7 +37,7 @@ export class ProjectsService {
     return savedProject;
   }
 
-  async findAllForUser(userId: number, role: string) {
+  async findAllForUser(userId: string, role: string) {
     if (role === 'admin') {
       return this.projectsRepository.find();
     }
@@ -51,7 +51,7 @@ export class ProjectsService {
     return memberships.map((m) => m.project);
   }
 
-  async findOne(id: number, userId: number, role: string) {
+  async findOne(id: string, userId: string, role: string) {
     const project = await this.projectsRepository.findOne({ where: { id } });
     if (!project) throw new NotFoundException('Project not found');
 
@@ -65,7 +65,24 @@ export class ProjectsService {
     return project;
   }
 
-  async update(id: number, updateProjectDto: UpdateProjectDto, userId: number, role: string) {
+  async getMembers(projectId: string, userId: string, role: string) {
+    // Verify access first
+    await this.findOne(projectId, userId, role);
+
+    const memberships = await this.projectMembersRepository.find({
+      where: { projectId },
+      relations: { user: true },
+    });
+
+    return memberships.map((m) => ({
+      id: m.user.id,
+      name: m.user.name,
+      email: m.user.email,
+      role: m.user.role,
+    }));
+  }
+
+  async update(id: string, updateProjectDto: UpdateProjectDto, userId: string, role: string) {
     const project = await this.findOne(id, userId, role);
     
     // Only admins or project owners can update
@@ -77,7 +94,7 @@ export class ProjectsService {
     return this.findOne(id, userId, 'admin'); // Bypass access check to just return updated entity
   }
 
-  async remove(id: number, userId: number, role: string) {
+  async remove(id: string, userId: string, role: string) {
     const project = await this.findOne(id, userId, role);
     
     // Only admins or project owners can delete
@@ -89,33 +106,36 @@ export class ProjectsService {
     return { success: true };
   }
 
-  async addMember(projectId: number, addMemberDto: AddMemberDto, currentUserId: number, role: string) {
+  async addMember(projectId: string, addMemberDto: AddMemberDto, currentUserId: string, role: string) {
     const project = await this.findOne(projectId, currentUserId, role);
 
     if (role !== 'admin' && project.ownerId !== currentUserId) {
       throw new ForbiddenException('Only admins or the project owner can add members');
     }
 
-    const userToAdd = await this.usersService.findById(addMemberDto.userId);
-    if (!userToAdd) throw new NotFoundException('User not found');
+    // Look up user by email
+    const userToAdd = await this.usersService.findByEmail(addMemberDto.email);
+    if (!userToAdd) throw new NotFoundException('User with this email not found');
 
     const existingMembership = await this.projectMembersRepository.findOne({
-      where: { projectId, userId: addMemberDto.userId },
+      where: { projectId, userId: userToAdd.id },
     });
 
     if (existingMembership) {
       throw new ConflictException('User is already a member of this project');
     }
 
-    return this.projectMembersRepository.save(
+    await this.projectMembersRepository.save(
       this.projectMembersRepository.create({
         projectId,
-        userId: addMemberDto.userId,
+        userId: userToAdd.id,
       })
     );
+
+    return { id: userToAdd.id, name: userToAdd.name, email: userToAdd.email, role: userToAdd.role };
   }
 
-  async removeMember(projectId: number, userIdToRemove: number, currentUserId: number, role: string) {
+  async removeMember(projectId: string, userIdToRemove: string, currentUserId: string, role: string) {
     const project = await this.findOne(projectId, currentUserId, role);
 
     if (role !== 'admin' && project.ownerId !== currentUserId) {

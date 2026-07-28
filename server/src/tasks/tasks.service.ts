@@ -22,7 +22,7 @@ export class TasksService {
     private tasksGateway: TasksGateway,
   ) {}
 
-  async create(projectId: number, createTaskDto: CreateTaskDto, userId: number, role: string) {
+  async create(projectId: string, createTaskDto: CreateTaskDto, userId: string, role: string) {
     // Verify user has access to this project (throws if not)
     await this.projectsService.findOne(projectId, userId, role);
 
@@ -45,7 +45,7 @@ export class TasksService {
     return savedTask;
   }
 
-  async findAll(projectId: number, filterDto: FilterTaskDto, userId: number, role: string) {
+  async findAll(projectId: string, filterDto: FilterTaskDto, userId: string, role: string) {
     // Verify access
     await this.projectsService.findOne(projectId, userId, role);
 
@@ -79,7 +79,7 @@ export class TasksService {
     };
   }
 
-  async findOne(id: number, projectId: number, userId: number, role: string) {
+  async findOne(id: string, projectId: string, userId: string, role: string) {
     // Verify project access
     await this.projectsService.findOne(projectId, userId, role);
 
@@ -89,7 +89,7 @@ export class TasksService {
     return task;
   }
 
-  async getHistory(id: number, projectId: number, userId: number, role: string) {
+  async getHistory(id: string, projectId: string, userId: string, role: string) {
     // Verify project access
     await this.projectsService.findOne(projectId, userId, role);
     
@@ -103,7 +103,7 @@ export class TasksService {
     });
   }
 
-  async update(id: number, projectId: number, updateTaskDto: UpdateTaskDto, userId: number, role: string) {
+  async update(id: string, projectId: string, updateTaskDto: UpdateTaskDto, userId: string, role: string) {
     const task = await this.findOne(id, projectId, userId, role);
 
     if (updateTaskDto.assigneeId) {
@@ -130,7 +130,7 @@ export class TasksService {
     return updatedTask;
   }
 
-  async remove(id: number, projectId: number, userId: number, role: string) {
+  async remove(id: string, projectId: string, userId: string, role: string) {
     // Only Admin can delete tasks (as per requirement: "delete tasks inside a project" and "prevent unauthorized users...").
     // Let's assume Admin or Task Creator or Project Owner can delete. For simplicity, we just check Admin or Project Owner.
     const project = await this.projectsService.findOne(projectId, userId, role);

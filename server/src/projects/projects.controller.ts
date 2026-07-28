@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -29,14 +29,20 @@ export class ProjectsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific project by id' })
-  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
     return this.projectsService.findOne(id, user.id, user.role);
+  }
+
+  @Get(':id/members')
+  @ApiOperation({ summary: 'Get all members of a project' })
+  getMembers(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.projectsService.getMembers(id, user.id, user.role);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a project (Admin/Owner only)' })
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProjectDto: UpdateProjectDto,
     @CurrentUser() user: any,
   ) {
@@ -45,14 +51,14 @@ export class ProjectsController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a project (Admin/Owner only)' })
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
     return this.projectsService.remove(id, user.id, user.role);
   }
 
   @Post(':id/members')
-  @ApiOperation({ summary: 'Add a user to a project (Admin/Owner only)' })
+  @ApiOperation({ summary: 'Add a user to a project by email (Admin/Owner only)' })
   addMember(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() addMemberDto: AddMemberDto,
     @CurrentUser() user: any,
   ) {
@@ -62,8 +68,8 @@ export class ProjectsController {
   @Delete(':id/members/:userId')
   @ApiOperation({ summary: 'Remove a user from a project (Admin/Owner only)' })
   removeMember(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() user: any,
   ) {
     return this.projectsService.removeMember(id, userId, user.id, user.role);

@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, Min, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TaskPriority, TaskStatus } from '../entities/task.entity';
@@ -14,11 +14,10 @@ export class FilterTaskDto {
   @IsOptional()
   priority?: TaskPriority;
 
-  @ApiPropertyOptional({ example: 2 })
-  @Type(() => Number)
-  @IsNumber()
+  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000' })
   @IsOptional()
-  assigneeId?: number;
+  @IsUUID()
+  assigneeId?: string;
 
   @ApiPropertyOptional({ default: 1, minimum: 1 })
   @Type(() => Number)

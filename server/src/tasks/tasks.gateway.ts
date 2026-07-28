@@ -29,29 +29,29 @@ export class TasksGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('joinProject')
-  handleJoinProject(@ConnectedSocket() client: Socket, @MessageBody() projectId: number) {
+  handleJoinProject(@ConnectedSocket() client: Socket, @MessageBody() projectId: string) {
     const room = `project_${projectId}`;
     client.join(room);
     return { event: 'joined', data: room };
   }
 
   @SubscribeMessage('leaveProject')
-  handleLeaveProject(@ConnectedSocket() client: Socket, @MessageBody() projectId: number) {
+  handleLeaveProject(@ConnectedSocket() client: Socket, @MessageBody() projectId: string) {
     const room = `project_${projectId}`;
     client.leave(room);
     return { event: 'left', data: room };
   }
 
   // Helper method to emit events from TasksService
-  notifyTaskUpdated(projectId: number, task: Task) {
+  notifyTaskUpdated(projectId: string, task: Task) {
     this.server.to(`project_${projectId}`).emit('task:updated', task);
   }
 
-  notifyTaskCreated(projectId: number, task: Task) {
+  notifyTaskCreated(projectId: string, task: Task) {
     this.server.to(`project_${projectId}`).emit('task:created', task);
   }
 
-  notifyTaskDeleted(projectId: number, taskId: number) {
+  notifyTaskDeleted(projectId: string, taskId: string) {
     this.server.to(`project_${projectId}`).emit('task:deleted', { id: taskId, projectId });
   }
 }

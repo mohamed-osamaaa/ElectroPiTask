@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -17,7 +17,7 @@ export class TasksController {
   @Post()
   @ApiOperation({ summary: 'Create a task inside a project' })
   create(
-    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
     @Body() createTaskDto: CreateTaskDto,
     @CurrentUser() user: any,
   ) {
@@ -27,7 +27,7 @@ export class TasksController {
   @Get()
   @ApiOperation({ summary: 'Get tasks with filtering and pagination' })
   findAll(
-    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
     @Query() filterDto: FilterTaskDto,
     @CurrentUser() user: any,
   ) {
@@ -37,8 +37,8 @@ export class TasksController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific task' })
   findOne(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser() user: any,
   ) {
     return this.tasksService.findOne(id, projectId, user.id, user.role);
@@ -47,8 +47,8 @@ export class TasksController {
   @Get(':id/history')
   @ApiOperation({ summary: 'Get audit log of task status changes' })
   getHistory(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser() user: any,
   ) {
     return this.tasksService.getHistory(id, projectId, user.id, user.role);
@@ -57,8 +57,8 @@ export class TasksController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a task' })
   update(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
     @Body() updateTaskDto: UpdateTaskDto,
     @CurrentUser() user: any,
   ) {
@@ -68,8 +68,8 @@ export class TasksController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a task' })
   remove(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('projectId', ParseUUIDPipe) projectId: string,
     @CurrentUser() user: any,
   ) {
     return this.tasksService.remove(id, projectId, user.id, user.role);

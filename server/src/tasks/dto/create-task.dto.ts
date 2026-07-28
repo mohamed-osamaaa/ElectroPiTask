@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsDateString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsDateString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TaskPriority, TaskStatus } from '../entities/task.entity';
 
@@ -28,8 +28,8 @@ export class CreateTaskDto {
   @IsOptional()
   dueDate?: string;
 
-  @ApiPropertyOptional({ example: 3 })
-  @IsNumber()
+  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000' })
+  @IsUUID()
   @IsOptional()
-  assigneeId?: number;
+  assigneeId?: string;
 }
