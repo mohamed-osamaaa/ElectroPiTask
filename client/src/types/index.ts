@@ -3,7 +3,7 @@ export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
 
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: UserRole;
@@ -11,24 +11,24 @@ export interface User {
 }
 
 export interface Project {
-  id: number;
+  id: string;
   name: string;
   description?: string;
-  ownerId: number;
+  ownerId: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
   dueDate?: string;
-  projectId: number;
-  creatorId: number;
-  assigneeId?: number;
+  projectId: string;
+  creatorId: string;
+  assigneeId?: string;
   createdAt: string;
   updatedAt: string;
 }

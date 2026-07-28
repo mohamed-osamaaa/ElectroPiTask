@@ -7,8 +7,13 @@ export const projectsApi = {
     return response.data.data ? response.data.data : response.data;
   },
   
-  getOne: async (id: number) => {
+  getOne: async (id: string) => {
     const response = await apiClient.get(`/projects/${id}`);
+    return response.data.data ? response.data.data : response.data;
+  },
+
+  getMembers: async (projectId: string) => {
+    const response = await apiClient.get(`/projects/${projectId}/members`);
     return response.data.data ? response.data.data : response.data;
   },
 
@@ -17,22 +22,22 @@ export const projectsApi = {
     return response.data.data ? response.data.data : response.data;
   },
 
-  update: async (id: number, data: Partial<Project>) => {
+  update: async (id: string, data: Partial<Project>) => {
     const response = await apiClient.patch(`/projects/${id}`, data);
     return response.data.data ? response.data.data : response.data;
   },
 
-  remove: async (id: number) => {
+  remove: async (id: string) => {
     const response = await apiClient.delete(`/projects/${id}`);
     return response.data.data ? response.data.data : response.data;
   },
 
-  addMember: async (projectId: number, email: string) => {
+  addMember: async (projectId: string, email: string) => {
     const response = await apiClient.post(`/projects/${projectId}/members`, { email });
     return response.data.data ? response.data.data : response.data;
   },
   
-  removeMember: async (projectId: number, userId: number) => {
+  removeMember: async (projectId: string, userId: string) => {
     const response = await apiClient.delete(`/projects/${projectId}/members/${userId}`);
     return response.data.data ? response.data.data : response.data;
   }
