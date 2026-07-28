@@ -6,6 +6,9 @@ dist/
 .next/
 out/
 
+# Next.js auto-generated files (do not edit or commit)
+next-env.d.ts
+
 # Environment files
 .env
 .env.local
