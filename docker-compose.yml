@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: task_manager_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: task_manager
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - '3306:3306'
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - task-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: task_manager_server
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USERNAME=user
+      - DB_PASSWORD=password
+      - DB_NAME=task_manager
+      - DB_SYNC=true
+      - JWT_SECRET=super_secret_jwt_key_for_demo
+      - NODE_ENV=production
+    depends_on:
+      - db
+    networks:
+      - task-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: task_manager_client
+    restart: always
+    ports:
+      - '3001:3000'
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000/api
+    depends_on:
+      - server
+    networks:
+      - task-network
+
+volumes:
+  db_data:
+
+networks:
+  task-network:
+    driver: bridge
