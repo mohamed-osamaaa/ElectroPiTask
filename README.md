@@ -34,7 +34,7 @@
 - 👥 **Role-Based Access Control** — `Admin` and `Member` roles enforced at both API and service layers.
 - 📁 **Projects** — Full CRUD. Admins/owners can add or remove project members. Members only see their own projects.
 - ✅ **Tasks** — Full CRUD with `title`, `description`, `status`, `priority`, `due date`, `creator`, and `assignee` fields.
-- 🔍 **Filtering & Pagination** — Filter tasks by `status`, `priority`, and `assignee`. Paginated responses.
+- 🔍 **Filtering, Search, Sorting & Pagination** — Filter tasks by `status`, `priority`, and `assignee`; search title/description; sort by created date, due date, priority, or title.
 - 🖥️ **Kanban Board** — Drag-and-drop task board powered by `@dnd-kit`.
 
 ### Bonus
@@ -157,8 +157,8 @@ ElectroPi/
 > **Prerequisites**: Docker Desktop installed and running.
 
 ```bash
-git clone <repository-url>
-cd ElectroPi
+git clone https://github.com/mohamed-osamaaa/ElectroPiTask.git
+cd ElectroPiTask
 docker-compose up --build
 ```
 
@@ -169,6 +169,10 @@ docker-compose up --build
 | Swagger API Docs | http://localhost:3000/api/docs |
 
 > The database schema is auto-synced on first run (`DB_SYNC=true` in the Docker Compose config).
+> To load demo users and tasks after the containers are running, execute:
+> ```bash
+> docker-compose exec server npm run seed
+> ```
 
 ---
 
@@ -179,8 +183,8 @@ docker-compose up --build
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
-cd ElectroPi
+git clone https://github.com/mohamed-osamaaa/ElectroPiTask.git
+cd ElectroPiTask
 ```
 
 ### 2. Setup the Backend
@@ -289,14 +293,17 @@ Full interactive documentation is available at **`http://localhost:3000/api/docs
 #### Task Filtering Query Parameters
 
 ```
-GET /api/projects/:pid/tasks?status=in_progress&priority=high&assigneeId=2&page=1&limit=10
+GET /api/projects/:pid/tasks?status=in_progress&priority=high&assigneeId=<uuid>&search=login&sortBy=dueDate&sortOrder=asc&page=1&limit=10
 ```
 
 | Param | Type | Values |
 |---|---|---|
 | `status` | `string` | `todo` \| `in_progress` \| `done` |
 | `priority` | `string` | `low` \| `medium` \| `high` |
-| `assigneeId` | `number` | User ID |
+| `assigneeId` | `string` | User UUID |
+| `search` | `string` | Matches task title or description |
+| `sortBy` | `string` | `createdAt` \| `dueDate` \| `priority` \| `title` |
+| `sortOrder` | `string` | `asc` \| `desc` |
 | `page` | `number` | Default: `1` |
 | `limit` | `number` | Default: `10` |
 
@@ -347,12 +354,12 @@ npm run test:e2e
 
 ## 🔑 Seed Credentials
 
-After running `npm run seed` (or with Docker on first boot + `DB_SYNC=true`):
+After running `npm run seed` locally, or `docker-compose exec server npm run seed` when using Docker:
 
 | Role | Email | Password |
 |---|---|---|
 | **Admin** | `admin@demo.com` | `Admin@123` |
-| **Member** | `member@demo.com` | `Member@123` |
+| **Member** | `mohamed@demo.com` | `Member@123` |
 
 > The Admin account has full access to all projects and tasks. The Member account only sees projects they are added to.
 

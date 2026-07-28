@@ -43,7 +43,7 @@ A production-grade REST API for a task management application built with **NestJ
    npm run seed
    ```
    *Admin Credentials:* `admin@demo.com` / `Admin@123`
-   *Member Credentials:* `member@demo.com` / `Member@123`
+   *Member Credentials:* `mohamed@demo.com` / `Member@123`
 
 ## 🏃 Running the Application
 
@@ -59,6 +59,11 @@ To run the entire stack (App + MySQL) in Docker:
 docker-compose up --build
 ```
 *(The API will be available at http://localhost:3000/api)*
+
+To load demo data after Docker starts:
+```bash
+docker-compose exec server npm run seed
+```
 
 ## 📚 API Documentation
 
@@ -77,4 +82,4 @@ npm run test
 - **`src/common/`**: Contains global guards (`JwtAuthGuard`, `RolesGuard`), decorators (`@CurrentUser`, `@Roles`), filters, and interceptors.
 - **`src/config/`**: Uses `@nestjs/config` and `Joi` to validate environment variables strictly upon startup.
 - **`src/database/data-source.ts`**: The TypeORM CLI config. Migrations are completely decoupled from `src/` execution to ensure no auto-sync (`DB_SYNC=false`) happens in production.
-- **`src/modules/`**: Feature-based modules containing Controllers, Services, DTOs, and Entities for separation of concerns.
+- **`src/auth/`, `src/users/`, `src/projects/`, `src/tasks/`**: Feature-based modules containing Controllers, Services, DTOs, and Entities for separation of concerns.
