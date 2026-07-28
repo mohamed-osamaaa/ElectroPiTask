@@ -1,0 +1,150 @@
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Task } from './entities/task.entity';
+import { TaskHistory } from './entities/task-history.entity';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
+import { FilterTaskDto } from './dto/filter-task.dto';
+import { ProjectsService } from '../projects/projects.service';
+import { UsersService } from '../users/users.service';
+import { TasksGateway } from './tasks.gateway';
+
+@Injectable()
+export class TasksService {
+  constructor(
+    @InjectRepository(Task)
+    private tasksRepository: Repository<Task>,
+    @InjectRepository(TaskHistory)
+    private taskHistoryRepository: Repository<TaskHistory>,
+    private projectsService: ProjectsService,
+    private usersService: UsersService,
+    private tasksGateway: TasksGateway,
+  ) {}
+
+  async create(projectId: number, createTaskDto: CreateTaskDto, userId: number, role: string) {
+    // Verify user has access to this project (throws if not)
+    await this.projectsService.findOne(projectId, userId, role);
+
+    if (createTaskDto.assigneeId) {
+      const assignee = await this.usersService.findById(createTaskDto.assigneeId);
+      if (!assignee) throw new BadRequestException('Assignee not found');
+    }
+
+    const task = this.tasksRepository.create({
+      ...createTaskDto,
+      projectId,
+      creatorId: userId,
+    });
+
+    const savedTask = await this.tasksRepository.save(task);
+    
+    // Notify connected clients
+    this.tasksGateway.notifyTaskCreated(projectId, savedTask);
+    
+    return savedTask;
+  }
+
+  async findAll(projectId: number, filterDto: FilterTaskDto, userId: number, role: string) {
+    // Verify access
+    await this.projectsService.findOne(projectId, userId, role);
+
+    const { status, priority, assigneeId, page = 1, limit = 10 } = filterDto;
+    
+    const query = this.tasksRepository.createQueryBuilder('task')
+      .where('task.projectId = :projectId', { projectId });
+
+    if (status) {
+      query.andWhere('task.status = :status', { status });
+    }
+    if (priority) {
+      query.andWhere('task.priority = :priority', { priority });
+    }
+    if (assigneeId) {
+      query.andWhere('task.assigneeId = :assigneeId', { assigneeId });
+    }
+
+    query.skip((page - 1) * limit).take(limit);
+    query.orderBy('task.createdAt', 'DESC');
+
+    const [tasks, total] = await query.getManyAndCount();
+
+    return {
+      data: tasks,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+      }
+    };
+  }
+
+  async findOne(id: number, projectId: number, userId: number, role: string) {
+    // Verify project access
+    await this.projectsService.findOne(projectId, userId, role);
+
+    const task = await this.tasksRepository.findOne({ where: { id, projectId } });
+    if (!task) throw new NotFoundException('Task not found');
+    
+    return task;
+  }
+
+  async getHistory(id: number, projectId: number, userId: number, role: string) {
+    // Verify project access
+    await this.projectsService.findOne(projectId, userId, role);
+    
+    // Verify task exists in project
+    await this.findOne(id, projectId, userId, role);
+
+    return this.taskHistoryRepository.find({
+      where: { taskId: id },
+      relations: { changedBy: true },
+      order: { changedAt: 'DESC' },
+    });
+  }
+
+  async update(id: number, projectId: number, updateTaskDto: UpdateTaskDto, userId: number, role: string) {
+    const task = await this.findOne(id, projectId, userId, role);
+
+    if (updateTaskDto.assigneeId) {
+      const assignee = await this.usersService.findById(updateTaskDto.assigneeId);
+      if (!assignee) throw new BadRequestException('Assignee not found');
+    }
+
+    if (updateTaskDto.status && updateTaskDto.status !== task.status) {
+      const history = this.taskHistoryRepository.create({
+        taskId: task.id,
+        oldStatus: task.status,
+        newStatus: updateTaskDto.status,
+        changedById: userId,
+      });
+      await this.taskHistoryRepository.save(history);
+    }
+
+    await this.tasksRepository.update(id, updateTaskDto);
+    const updatedTask = await this.findOne(id, projectId, userId, role);
+    
+    // Notify connected clients
+    this.tasksGateway.notifyTaskUpdated(projectId, updatedTask);
+    
+    return updatedTask;
+  }
+
+  async remove(id: number, projectId: number, userId: number, role: string) {
+    // Only Admin can delete tasks (as per requirement: "delete tasks inside a project" and "prevent unauthorized users...").
+    // Let's assume Admin or Task Creator or Project Owner can delete. For simplicity, we just check Admin or Project Owner.
+    const project = await this.projectsService.findOne(projectId, userId, role);
+    const task = await this.findOne(id, projectId, userId, role);
+
+    if (role !== 'admin' && project.ownerId !== userId && task.creatorId !== userId) {
+      throw new ForbiddenException('You do not have permission to delete this task');
+    }
+
+    await this.tasksRepository.delete(id);
+    
+    // Notify connected clients
+    this.tasksGateway.notifyTaskDeleted(projectId, id);
+    
+    return { success: true };
+  }
+}
