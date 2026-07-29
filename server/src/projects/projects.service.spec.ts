@@ -3,6 +3,7 @@ import { ProjectsService } from './projects.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
+import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { BadRequestException } from '@nestjs/common';
 
@@ -32,6 +33,7 @@ describe('ProjectsService', () => {
         ProjectsService,
         { provide: getRepositoryToken(Project), useValue: mockProjectRepository },
         { provide: getRepositoryToken(ProjectMember), useValue: mockProjectMemberRepository },
+        { provide: getRepositoryToken(User), useValue: {} },
         { provide: UsersService, useValue: mockUsersService },
       ],
     }).compile();
